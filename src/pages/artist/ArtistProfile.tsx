@@ -381,12 +381,31 @@ const ArtistProfile: React.FC = () => {
 
     } catch (error: any) {
       console.error('Profile submission error:', error);
-      toast({ 
-        title: 'Submission Failed', 
-        description: error?.response?.data?.message || 'Failed to submit profile. Please try again.',
-        variant: 'destructive'
-      });
+      const status = error?.response?.status;
+      const serverMessage =
+        typeof error?.response?.data === 'string'
+          ? error.response.data
+          : error?.response?.data?.message || error?.message;
 
+      if (status === 403) {
+        toast({
+          title: 'Access Forbidden',
+          description: serverMessage || 'Access denied. Please confirm you are signed in with an artist account and try again.',
+          variant: 'destructive',
+        });
+      } else if (status === 401) {
+        toast({
+          title: 'Session Expired',
+          description: 'Your session has expired. Please sign in again and resubmit your profile.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Submission Failed',
+          description: serverMessage || 'Failed to submit profile. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setSaving(false);
     }

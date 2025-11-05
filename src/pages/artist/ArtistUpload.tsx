@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,42 +12,133 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import MusicUploadSuccessDialog from '@/components/common/MusicUploadSuccessDialog';
 
+const normalizeStatus = (details?: MemberDetails | null): string => {
+  if (!details) return '';
+  const raw = details.status?.statusName ?? (details as any)?.status?.status ?? '';
+  return typeof raw === 'string' ? raw.toUpperCase() : '';
+};
+
+const extractArtistIdFromProfile = (details?: MemberDetails | null): string => {
+  if (!details) return '';
+  const candidate = (details as any)?.ArtistId ?? (details as any)?.artistId ?? '';
+  if (candidate === null || candidate === undefined) return '';
+  const value = typeof candidate === 'string' ? candidate : String(candidate);
+  return value.trim();
+};
+
+const deriveArtistNameFromProfile = (details?: MemberDetails | null): string => {
+  if (!details) return '';
+  const parts = [details.firstName, details.surname].filter(Boolean);
+  return parts.join(' ').trim();
+};
+
+const deriveGroupNameFromProfile = (details?: MemberDetails | null): string => {
+  if (!details) return '';
+  const candidate =
+    (details as any)?.groupNameORStageName ??
+    (details as any)?.groupNameOrStageName ??
+    (details as any)?.groupOrBandOrStageName ??
+    (details as any)?.groupnameOrStageName ??
+    (details as any)?.groupnameorStageName ??
+    (details as any)?.groupName ??
+    (details as any)?.stageName ??
+    (details as any)?.pseudonym ??
+    '';
+  return typeof candidate === 'string' ? candidate.trim() : '';
+};
+
+const createResetFormState = (prev: MusicUploadForm): MusicUploadForm => ({
+  title: '',
+  file: null as any,
+  ArtistId: prev.ArtistId,
+  albumName: '',
+  artist: prev.artist,
+  groupOrBandOrStageName: prev.groupOrBandOrStageName,
+  featuredArtist: '',
+  producer: '',
+  duration: '',
+  country: prev.country,
+  artistUploadTypeId: undefined,
+  artistWorkTypeId: undefined,
+  composer: '',
+  author: '',
+  arranger: '',
+  publisher: '',
+  publishersName: '',
+  publisherAddress: '',
+  publisherTelephone: '',
+  recordedBy: '',
+  addressOfRecordingCompany: '',
+  recordingCompanyTelephone: '',
+  labelName: '',
+  dateRecorded: '',
+});
+
 const ArtistUpload: React.FC = () => {
-  const [form, setForm] = useState<MusicUploadForm>({
+  const [form, setForm] = useState<MusicUploadForm>(() => ({
     title: '',
     file: null as any,
-  });
+    ArtistId: '',
+    albumName: '',
+    artist: '',
+    groupOrBandOrStageName: '',
+    featuredArtist: '',
+    producer: '',
+    duration: '',
+    country: '',
+    artistUploadTypeId: undefined,
+    artistWorkTypeId: undefined,
+    composer: '',
+    author: '',
+    arranger: '',
+    publisher: '',
+    publishersName: '',
+    publisherAddress: '',
+    publisherTelephone: '',
+    recordedBy: '',
+    addressOfRecordingCompany: '',
+    recordingCompanyTelephone: '',
+    labelName: '',
+    dateRecorded: '',
+  }));
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [profile, setProfile] = useState<MemberDetails | null>(null);
   const [lookups, setLookups] = useState<{ uploadTypes: ArtistUploadType[]; workTypes: ArtistWorkType[] }>({
     uploadTypes: [],
     workTypes: [],
   });
   const [successOpen, setSuccessOpen] = useState(false);
+  const [uploadedTitle, setUploadedTitle] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
+  const profileStatus = useMemo(() => normalizeStatus(profile), [profile]);
+  const isApproved = profileStatus === 'APPROVED';
+  const profileArtistId = useMemo(() => extractArtistIdFromProfile(profile), [profile]);
+  const hasArtistId = Boolean((form.ArtistId ?? '').toString().trim());
 
   useEffect(() => {
+    let active = true;
+
     const loadData = async () => {
       try {
-        // Load profile
-        const p = await artistAPI.getProfile();
-        setProfile(p);
-
-        // Load lookups
-        const [uploadTypes, workTypes] = await Promise.all([
+        const [profileResponse, uploadTypes, workTypes] = await Promise.all([
+          artistAPI.getProfile().catch(() => null),
           lookupAPI.getArtistUploadTypes().catch(() => []),
           lookupAPI.getArtistWorkTypes().catch(() => []),
         ]);
 
-        setLookups({
-          uploadTypes,
-          workTypes,
-        });
-      } catch (error) {
-        // Profile doesn't exist yet
+        if (!active) return;
+
+        setProfile(profileResponse);
+        setLookups({ uploadTypes, workTypes });
+      } finally {
+        if (active) {
+          setInitializing(false);
+        }
       }
     };
+
     loadData();
 
     const onStorage = (e: StorageEvent) => {
@@ -55,15 +146,57 @@ const ArtistUpload: React.FC = () => {
       try {
         const payload = JSON.parse(e.newValue || '{}');
         if (payload?.type === 'profile' && payload.userId) {
-          // If the update concerns this user, reload profile
-          artistAPI.getProfile().then(setProfile).catch(() => {});
+          artistAPI
+            .getProfile()
+            .then(profileResponse => {
+              if (!active) return;
+              setProfile(profileResponse);
+            })
+            .catch(() => {
+              if (!active) return;
+              setProfile(null);
+            });
           toast({ title: 'Profile Status Updated', description: 'Your profile status was updated by an admin.' });
         }
-      } catch (err) {}
+      } catch (err) {
+        // ignore malformed events
+      }
     };
+
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+    return () => {
+      active = false;
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [toast]);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    setForm(prev => {
+      const updates: Partial<MusicUploadForm> = {};
+      const profileArtistId = extractArtistIdFromProfile(profile);
+      if (profileArtistId && profileArtistId !== (prev.ArtistId ?? '').trim()) {
+        updates.ArtistId = profileArtistId;
+      }
+
+      if (!prev.artist?.trim()) {
+        const name = deriveArtistNameFromProfile(profile);
+        if (name) updates.artist = name;
+      }
+
+      if (!prev.groupOrBandOrStageName?.trim()) {
+        const groupName = deriveGroupNameFromProfile(profile);
+        if (groupName) updates.groupOrBandOrStageName = groupName;
+      }
+
+      if (!prev.country?.trim() && profile.country) {
+        updates.country = profile.country;
+      }
+
+      return Object.keys(updates).length ? { ...prev, ...updates } : prev;
+    });
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -76,7 +209,11 @@ const ArtistUpload: React.FC = () => {
   };
 
   const handleUpload = async () => {
-    // Pre-checks for user, role, and approval status
+    if (initializing) {
+      toast({ title: 'Loading profile details', description: 'Please wait a moment while we confirm your approval status.', variant: 'destructive' });
+      return;
+    }
+
     if (!user) {
       toast({ title: 'Please sign in', description: 'You must be signed in to upload music.', variant: 'destructive' });
       return;
@@ -85,18 +222,23 @@ const ArtistUpload: React.FC = () => {
       toast({ title: 'Not permitted', description: 'Only artist accounts can upload music.', variant: 'destructive' });
       return;
     }
-    if (profile && ((profile.status?.statusName || (profile as any).status?.status) !== 'APPROVED')) {
+    if (!isApproved) {
       toast({ title: 'Profile not approved', description: 'Your profile must be approved before you can upload music.', variant: 'destructive' });
       return;
     }
-    if (!form.file || !form.title.trim() || !(form as any).ArtistId?.toString().trim()) {
+
+    const trimmedTitle = form.title.trim();
+    const artistId = (form.ArtistId ?? '').toString().trim();
+
+    if (!form.file || !trimmedTitle || !artistId) {
       toast({
-        title: "Error",
-        description: "Please select a file, enter a title, and provide your ArtistId",
-        variant: "destructive",
+        title: 'Missing required details',
+        description: 'Please select a file, enter a song title, and ensure your Artist ID is present.',
+        variant: 'destructive',
       });
       return;
     }
+
     if (!form.artistUploadTypeId || !form.artistWorkTypeId) {
       toast({
         title: 'Missing required fields',
@@ -108,19 +250,28 @@ const ArtistUpload: React.FC = () => {
 
     try {
       setLoading(true);
-      await artistAPI.uploadMusic(form);
-      setForm({
-        title: '',
-        file: null as any,
-      });
+      const payload: MusicUploadForm = {
+        ...form,
+        title: trimmedTitle,
+        ArtistId: artistId,
+      };
+      await artistAPI.uploadMusic(payload);
+      setUploadedTitle(trimmedTitle);
+      setForm(prev => createResetFormState({
+        ...prev,
+        ArtistId: artistId,
+        artist: prev.artist,
+        groupOrBandOrStageName: prev.groupOrBandOrStageName,
+        country: prev.country,
+      }));
       setSuccessOpen(true);
       toast({
-        title: "Upload Successful",
-        description: "Your music has been uploaded successfully!",
+        title: 'Upload Successful',
+        description: 'Your music has been uploaded successfully!',
       });
     } catch (error: any) {
       const status = error?.response?.status;
-      const message = error?.response?.data?.message;
+      const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
       if (status === 403) {
         toast({
           title: 'Upload Forbidden',
@@ -148,17 +299,27 @@ const ArtistUpload: React.FC = () => {
           <CardTitle>Upload Music</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {profile && ((profile.status?.statusName || (profile as any).status?.status) !== 'APPROVED') && (
-            <div className="p-3 rounded border border-yellow-200 bg-yellow-50 text-sm text-yellow-800">
-              Your profile is not approved yet. You cannot upload music until approval.
-            </div>
-          )}
           {!user && (
             <div className="p-3 rounded border border-yellow-200 bg-yellow-50 text-sm text-yellow-800">
               Please sign in to upload music.
             </div>
           )}
-          
+          {initializing && (
+            <div className="p-3 rounded border border-blue-200 bg-blue-50 text-sm text-blue-800">
+              Loading your artist profile and verification details...
+            </div>
+          )}
+          {!initializing && !!profileStatus && !isApproved && (
+            <div className="p-3 rounded border border-yellow-200 bg-yellow-50 text-sm text-yellow-800">
+              Your profile is not approved yet. You cannot upload music until approval.
+            </div>
+          )}
+          {isApproved && !hasArtistId && (
+            <div className="p-3 rounded border border-amber-200 bg-amber-50 text-sm text-amber-800">
+              We could not locate an Artist ID on your approved profile. Please contact the NAMSA support team so they can assign one before you upload music.
+            </div>
+          )}
+
           {/* Basic Track Information */}
           <div>
             <h3 className="text-lg font-semibold mb-4">Basic Track Information</h3>
@@ -168,11 +329,17 @@ const ArtistUpload: React.FC = () => {
                 <Input 
                   id="ArtistId" 
                   name="ArtistId" 
-                  value={(form as any).ArtistId || ''} 
+                  value={form.ArtistId ?? ''} 
                   onChange={(e) => setForm(prev => ({ ...prev, ArtistId: e.target.value }))}
-                  placeholder="Enter your ArtistId"
+                  placeholder="Artist ID will appear once your profile is approved"
                   required
+                  readOnly={Boolean(profileArtistId)}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {profileArtistId
+                    ? 'Pulled automatically from your approved artist profile.'
+                    : 'If you have not received an Artist ID, please contact the NAMSA admin team.'}
+                </p>
               </div>
               <div>
                 <Label htmlFor="title">Title *</Label>
@@ -447,14 +614,24 @@ const ArtistUpload: React.FC = () => {
 
           <Button 
             onClick={handleUpload} 
-            disabled={loading || !form.file || !form.title.trim() || (profile && ((profile.status?.statusName || (profile as any).status?.status) !== 'APPROVED'))}
+            disabled={
+              loading ||
+              initializing ||
+              !user ||
+              !form.file ||
+              !form.title.trim() ||
+              !isApproved ||
+              !hasArtistId ||
+              !form.artistUploadTypeId ||
+              !form.artistWorkTypeId
+            }
             className="w-full"
           >
             {loading ? 'Uploading...' : 'Upload Music'}
           </Button>
         </CardContent>
       </Card>
-      <MusicUploadSuccessDialog open={successOpen} onOpenChange={setSuccessOpen} musicTitle={form.title} />
+      <MusicUploadSuccessDialog open={successOpen} onOpenChange={setSuccessOpen} musicTitle={uploadedTitle} />
     </DashboardLayout>
   );
 };

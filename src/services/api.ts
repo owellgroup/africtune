@@ -146,7 +146,16 @@ export const artistAPI = {
     delete payload.genderId;
     delete payload.bankNameId;
 
-    const response = await api.post('/api/artist/profile', payload);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      throw new Error('Not authenticated: please sign in again to complete your profile.');
+    }
+    const response = await api.post('/api/artist/profile', payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
     return response.data;
   },
 
@@ -275,50 +284,62 @@ export const artistAPI = {
     return response.data;
   },
 
-  // Upload Music - full model support
-  uploadMusic: async (musicData: MusicUploadForm): Promise<ArtistWork> => {
-    const formData = new FormData();
-    // Required
-    formData.append('file', musicData.file);
-    formData.append('title', musicData.title);
+    // Upload Music - full model support aligned with backend contract
+    uploadMusic: async (musicData: MusicUploadForm): Promise<ArtistWork> => {
+      if (!musicData.file) {
+        throw new Error('Music file is required.');
+      }
+      if (musicData.artistUploadTypeId == null || musicData.artistWorkTypeId == null) {
+        throw new Error('Upload type and work type are required before submitting music.');
+      }
 
-    // Optional fields mapped to backend model (case-sensitive keys)
-    if (musicData.albumName) formData.append('albumName', musicData.albumName);
-    if (musicData.artist) formData.append('artist', musicData.artist);
-    if (musicData.groupOrBandOrStageName) formData.append('GroupOrBandOrStageName', musicData.groupOrBandOrStageName);
-    if (musicData.featuredArtist) formData.append('featuredArtist', musicData.featuredArtist);
-    if (musicData.producer) formData.append('producer', musicData.producer);
-    if (musicData.duration) formData.append('Duration', musicData.duration);
-    if (musicData.country) formData.append('country', musicData.country);
-    if (musicData.artistUploadTypeId != null) formData.append('artistUploadTypeId', String(musicData.artistUploadTypeId));
-    if (musicData.artistWorkTypeId != null) formData.append('artistWorkTypeId', String(musicData.artistWorkTypeId));
-    if (musicData.composer) formData.append('composer', musicData.composer);
-    if (musicData.author) formData.append('author', musicData.author);
-    if (musicData.arranger) formData.append('arranger', musicData.arranger);
-    if (musicData.publisher) formData.append('publisher', musicData.publisher);
-    if (musicData.publishersName) formData.append('publishersName', musicData.publishersName);
-    if (musicData.publisherAddress) formData.append('publisherAdress', musicData.publisherAddress);
-    if (musicData.publisherTelephone) formData.append('publisherTelephone', musicData.publisherTelephone);
-    if (musicData.recordedBy) formData.append('recordedBy', musicData.recordedBy);
-    if (musicData.addressOfRecordingCompany) formData.append('AddressOfRecordingCompany', musicData.addressOfRecordingCompany);
-    if (musicData.recordingCompanyTelephone) formData.append('RecordingCompanyTelephone', musicData.recordingCompanyTelephone);
-    if (musicData.labelName) formData.append('labelName', musicData.labelName);
-    if (musicData.dateRecorded) formData.append('dateRecorded', musicData.dateRecorded);
-    // Explicit ArtistId from form (required by backend for music upload)
-    if ((musicData as any).ArtistId) {
-      formData.append('ArtistId', String((musicData as any).ArtistId));
-    }
+      const toStringValue = (value: any) => {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string') return value;
+        return String(value);
+      };
 
-    // Explicit Authorization header mirrors document upload behavior
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const response = await api.post('/api/artist/music/upload', formData, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+      const formData = new FormData();
+      formData.append('file', musicData.file);
+      formData.append('title', musicData.title ?? '');
+
+      const append = (key: string, value: any) => {
+        formData.append(key, toStringValue(value));
+      };
+
+      append('albumName', musicData.albumName);
+      append('artist', musicData.artist);
+      append('GroupOrBandOrStageName', musicData.groupOrBandOrStageName);
+      append('featuredArtist', musicData.featuredArtist);
+      append('producer', musicData.producer);
+      append('country', musicData.country);
+      append('artistUploadTypeId', musicData.artistUploadTypeId);
+      append('artistWorkTypeId', musicData.artistWorkTypeId);
+      append('Duration', musicData.duration);
+      append('composer', musicData.composer);
+      append('author', musicData.author);
+      append('arranger', musicData.arranger);
+      append('publisher', musicData.publisher);
+      append('publishersName', musicData.publishersName);
+      append('publisherAdress', musicData.publisherAddress);
+      append('publisherTelephone', musicData.publisherTelephone);
+      append('recordedBy', musicData.recordedBy);
+      append('AddressOfRecordingCompany', musicData.addressOfRecordingCompany);
+      append('RecordingCompanyTelephone', musicData.recordingCompanyTelephone);
+      append('labelName', musicData.labelName);
+      append('dateRecorded', musicData.dateRecorded);
+
+      const artistId = (musicData as any).ArtistId ?? (musicData as any).artistId ?? '';
+      append('ArtistId', typeof artistId === 'string' ? artistId.trim() : artistId);
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const response = await api.post('/api/artist/music/upload', formData, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      return response.data;
+    },
 
   // Get My Music - matches ApiGuide.md exactly
   getMyMusic: async (): Promise<ArtistWork[]> => {
@@ -358,9 +379,12 @@ export const artistAPI = {
     delete payload.bankNameId;
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      throw new Error('Not authenticated: please sign in again to update your profile.');
+    }
     const response = await api.put('/api/artist/profile', payload, {
       headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
