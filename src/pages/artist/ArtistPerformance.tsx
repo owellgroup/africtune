@@ -235,77 +235,91 @@ const ArtistPerformance: React.FC = () => {
         />
       )}
 
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Your Performance (Artist)</h1>
-            <p className="text-muted-foreground">Track your music selections across all companies using log sheets</p>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Your Performance (Artist)</h1>
+              <p className="text-sm text-muted-foreground sm:text-base">
+                Track your music selections across all companies using log sheets
+              </p>
+            </div>
+            <div className="w-full max-w-md sm:w-auto">
+              <Input
+                placeholder="Search your tracks..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full"
+              />
+            </div>
           </div>
-          <div className="w-72">
-            <Input
-              placeholder="Search your tracks..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        </div>
 
         {/* Quick Track Lookup */}
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-1">
             <CardTitle>Your Track Lookup</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="mb-4 text-sm text-muted-foreground">Search your songs by title to see how many companies have selected them.</div>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Search your songs by title to see how many companies have selected them.
+            </p>
             <div className="grid grid-cols-1 gap-4">
-              <div className="overflow-auto max-h-48">
-                <table className="w-full text-sm">
+              <div className="max-h-60 overflow-x-auto overflow-y-auto rounded-xl border border-border/40 bg-card/40">
+                <table className="min-w-full table-fixed text-sm">
                   <thead>
                     <tr className="text-left">
-                      <th className="px-2 py-1">Title</th>
-                      <th className="px-2 py-1">Selections</th>
-                      <th className="px-2 py-1">Companies</th>
+                      <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Title</th>
+                      <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selections</th>
+                      <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Companies</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-border/60">
                     {songCounts
                       .filter((s: any) => !search.trim() || s.title.toLowerCase().includes(search.toLowerCase()))
                       .sort((a: any, b: any) => b.count - a.count)
                       .map((s: any) => (
-                        <tr key={s.id} className="border-t">
-                          <td className="px-2 py-1">
-                            <div className="flex items-center gap-2">
-                              {s.track?.fileType?.toLowerCase().includes('video') ? <Video className="h-4 w-4" /> : <FileMusic className="h-4 w-4" />}
-                              <span>{s.title}</span>
+                        <tr key={s.id} className="transition-colors hover:bg-muted/40">
+                          <td className="px-3 py-2 align-top">
+                            <div className="flex items-start gap-3">
+                              {s.track?.fileType?.toLowerCase().includes('video') ? (
+                                <Video className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <FileMusic className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                              )}
+                              <span className="flex-1 truncate text-sm font-medium leading-tight text-foreground" title={s.title}>
+                                {s.title}
+                              </span>
                               {s.track?.fileUrl && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 w-6 p-0"
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 shrink-0 rounded-full p-0 text-primary hover:bg-primary/10"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentTrack(s.track);
                                     setPlayerOpen(true);
                                   }}
+                                  aria-label={`Preview ${s.title}`}
                                 >
                                   <Play className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
                           </td>
-                          <td className="px-2 py-1 font-semibold">{s.count}</td>
-                          <td className="px-2 py-1 min-w-[200px] max-w-[200px]">
-                            <div className="overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400">
-                              {Object.keys(s.companies || {}).length > 0 
-                                ? Object.keys(s.companies).map((company, i) => (
-                                  <React.Fragment key={company}>
-                                    {i > 0 && <span className="mx-1">•</span>}
-                                    <span className="text-sm">{company}</span>
-                                  </React.Fragment>
+                          <td className="px-3 py-2 align-top text-sm font-semibold text-foreground">{s.count}</td>
+                          <td className="px-3 py-2 align-top">
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.keys(s.companies || {}).length > 0 ? (
+                                Object.keys(s.companies).map((company) => (
+                                  <span
+                                    key={company}
+                                    className="rounded-full bg-muted/70 px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                                  >
+                                    {company}
+                                  </span>
                                 ))
-                                : '-'
-                              }
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -319,60 +333,73 @@ const ArtistPerformance: React.FC = () => {
 
         {/* Top Songs: table + histogram + company breakdown */}
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-1">
             <CardTitle>Your Top Songs</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="h-48 bg-muted rounded animate-pulse" />
+              <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
             ) : songCounts.length === 0 ? (
               user?.role === 'ARTIST' ? (
-                <div className="space-y-2">
-                  <p className="text-muted-foreground">No selections found. Artists cannot fetch cross-company log sheets directly for security reasons.</p>
-                  <p className="text-sm text-muted-foreground">If you believe companies have selected your music, ask an admin to run the report or have companies share their log sheets. Alternatively, if you have a company account, sign in as that company to view its logsheets.</p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>No selections found. Artists cannot fetch cross-company log sheets directly for security reasons.</p>
+                  <p>
+                    If you believe companies have selected your music, ask an admin to run the report or have companies share their log sheets. Alternatively, if you have a company account, sign in as that company to view its log sheets.
+                  </p>
                 </div>
               ) : (
-                <p className="text-muted-foreground">No selections found. Share your music with companies so they can select it in their log sheets!</p>
+                <p className="text-sm text-muted-foreground">No selections found. Share your music with companies so they can select it in their log sheets!</p>
               )
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1">
-                  <h4 className="text-lg font-semibold mb-2">All Your Songs</h4>
-                  <div className="overflow-auto max-h-64">
-                    <table className="w-full text-sm">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="space-y-3">
+                  <h4 className="text-lg font-semibold">All Your Songs</h4>
+                  <div className="max-h-64 overflow-x-auto overflow-y-auto rounded-xl border border-border/40 bg-card/30">
+                    <table className="min-w-full table-fixed text-sm">
                       <thead>
                         <tr className="text-left">
-                          <th className="px-2 py-1">Title</th>
-                          <th className="px-2 py-1">Selections</th>
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Title</th>
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selections</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-border/60">
                         {songCounts
                           .filter((s: any) => !search.trim() || s.title.toLowerCase().includes(search.toLowerCase()))
                           .sort((a: any, b: any) => b.count - a.count)
                           .map((s: any) => (
-                            <tr key={s.id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedTrackId(s.id)}>
-                              <td className="px-2 py-1">
-                                <div className="flex items-center gap-2">
-                                  {s.track?.fileType?.toLowerCase().includes('video') ? <Video className="h-4 w-4" /> : <FileMusic className="h-4 w-4" />}
-                                  <span>{s.title}</span>
+                            <tr
+                              key={s.id}
+                              className={`cursor-pointer transition-colors hover:bg-muted/40 ${selectedTrackId === s.id ? 'bg-muted/30' : ''}`}
+                              onClick={() => setSelectedTrackId(s.id)}
+                            >
+                              <td className="px-3 py-2 align-top">
+                                <div className="flex items-start gap-3">
+                                  {s.track?.fileType?.toLowerCase().includes('video') ? (
+                                    <Video className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <FileMusic className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                  )}
+                                  <span className="flex-1 truncate text-sm font-medium leading-tight text-foreground" title={s.title}>
+                                    {s.title}
+                                  </span>
                                   {s.track?.fileUrl && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="h-6 w-6 p-0"
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 shrink-0 rounded-full p-0 text-primary hover:bg-primary/10"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setCurrentTrack(s.track);
                                         setPlayerOpen(true);
                                       }}
+                                      aria-label={`Preview ${s.title}`}
                                     >
                                       <Play className="h-4 w-4" />
                                     </Button>
                                   )}
                                 </div>
                               </td>
-                              <td className="px-2 py-1 font-semibold">{s.count}</td>
+                              <td className="px-3 py-2 align-top text-sm font-semibold text-foreground">{s.count}</td>
                             </tr>
                           ))}
                       </tbody>
@@ -380,10 +407,10 @@ const ArtistPerformance: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="lg:col-span-2">
-                  <h4 className="text-lg font-semibold mb-2">Selections Distribution (Histogram)</h4>
-                  <div style={{ width: '100%', height: 300 }}>
-                    <ResponsiveContainer>
+                <div className="space-y-4 lg:col-span-2">
+                  <h4 className="text-lg font-semibold">Selections Distribution (Histogram)</h4>
+                  <div className="h-[240px] w-full sm:h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={(() => {
                           const values = songCounts.map((s: any) => s.count);
@@ -393,17 +420,17 @@ const ArtistPerformance: React.FC = () => {
                           const binCount = Math.min(12, Math.max(6, Math.ceil(values.length / 5)));
                           const binSize = (max - min) / binCount;
                           const bins = new Array(binCount).fill(0);
-                          values.forEach(v => {
+                          values.forEach((v) => {
                             const idx = Math.min(Math.floor((v - min) / (binSize || 1)), binCount - 1);
                             bins[idx]++;
                           });
                           return bins.map((count, i) => ({ range: `${Math.round(min + i * binSize)}-${Math.round(min + (i + 1) * binSize)}`, count }));
                         })()}
-                        margin={{ top: 10, right: 20, left: 40, bottom: 60 }}
+                        margin={{ top: 10, right: 16, left: 12, bottom: 56 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="range" angle={-45} textAnchor="end" height={60} />
-                        <YAxis label={{ value: 'Number of Songs', angle: -90, position: 'insideLeft' }} />
+                        <XAxis dataKey="range" angle={-45} textAnchor="end" height={56} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} label={{ value: 'Number of Songs', angle: -90, position: 'insideLeft', offset: -4 }} />
                         <Tooltip />
                         <Bar dataKey="count" fill="#82ca9d">
                           {new Array(12).fill(0).map((_, i) => (
@@ -415,16 +442,22 @@ const ArtistPerformance: React.FC = () => {
                   </div>
 
                   {selectedTrackId && (
-                    <div className="mt-4">
+                    <div className="space-y-3">
                       <h5 className="font-semibold">Companies that selected this song</h5>
-                      <div className="overflow-auto max-h-40 mt-2">
-                        <table className="w-full text-sm">
+                      <div className="max-h-40 overflow-x-auto overflow-y-auto rounded-lg border border-border/30 bg-card/20">
+                        <table className="min-w-full table-fixed text-sm">
                           <thead>
-                            <tr className="text-left"><th className="px-2 py-1">Company</th><th className="px-2 py-1">Count</th></tr>
+                            <tr className="text-left">
+                              <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Company</th>
+                              <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Count</th>
+                            </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-border/60">
                             {selectedCompanyData.map((c: any) => (
-                              <tr key={c.company} className="border-t"><td className="px-2 py-1">{c.company}</td><td className="px-2 py-1 font-semibold">{c.count}</td></tr>
+                              <tr key={c.company} className="transition-colors hover:bg-muted/40">
+                                <td className="px-3 py-2 text-sm font-medium text-foreground">{c.company}</td>
+                                <td className="px-3 py-2 text-sm font-semibold text-foreground">{c.count}</td>
+                              </tr>
                             ))}
                           </tbody>
                         </table>
@@ -437,88 +470,52 @@ const ArtistPerformance: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Card>
-            <CardHeader>
+            <CardHeader className="space-y-1">
               <CardTitle>All Your Songs</CardTitle>
             </CardHeader>
             <CardContent>
               {artistCounts.length === 0 ? (
-                <p className="text-muted-foreground">No song activity</p>
+                <p className="text-sm text-muted-foreground">No song activity</p>
               ) : (
-                <div>
-                  <div className="overflow-auto max-h-64">
-                    <table className="w-full text-sm">
+                <div className="space-y-4">
+                  <div className="max-h-64 overflow-x-auto overflow-y-auto rounded-xl border border-border/40 bg-card/30">
+                    <table className="min-w-full table-fixed text-sm">
                       <thead>
-                        <tr className="text-left"><th className="px-2 py-1">Song</th><th className="px-2 py-1">Selections</th></tr>
+                        <tr className="text-left">
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Song</th>
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selections</th>
+                        </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-border/60">
                         {artistCounts
                           .filter((a: any) => !search.trim() || a.name.toLowerCase().includes(search.toLowerCase()))
                           .sort((a: any, b: any) => b.count - a.count)
                           .map((a: any) => (
-                            <tr key={a.name} className="border-t"><td className="px-2 py-1">{a.name}</td><td className="px-2 py-1 font-semibold">{a.count}</td></tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="mt-4" style={{ width: '100%', height: 180 }}>
-                    <ResponsiveContainer>
-                      <BarChart data={artistCounts.map((a: any) => ({ name: a.name, count: a.count }))} margin={{ top: 10, right: 20, left: 0, bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} height={60} />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="count" fill="#8884d8">
-                          {artistCounts.map((_: any, i: number) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Companies</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {companyCounts.length === 0 ? (
-                <p className="text-muted-foreground">No company activity</p>
-              ) : (
-                <div>
-                  <div className="overflow-auto max-h-64">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left"><th className="px-2 py-1">Company</th><th className="px-2 py-1">LogSheets</th><th className="px-2 py-1">Selected Songs</th></tr>
-                      </thead>
-                      <tbody>
-                        {companyCounts
-                          .filter((c: any) => !search.trim() || c.company.toLowerCase().includes(search.toLowerCase()))
-                          .sort((a: any, b: any) => b.selectedMusic - a.selectedMusic)
-                          .map((c: any) => (
-                            <tr key={c.company} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedCompany(c.company)}>
-                              <td className="px-2 py-1">{c.company}</td>
-                              <td className="px-2 py-1 font-semibold">{c.sheets}</td>
-                              <td className="px-2 py-1 font-semibold">{c.selectedMusic}</td>
+                            <tr key={a.name} className="transition-colors hover:bg-muted/40">
+                              <td className="px-3 py-2 text-sm font-medium text-foreground">{a.name}</td>
+                              <td className="px-3 py-2 text-sm font-semibold text-foreground">{a.count}</td>
                             </tr>
                           ))}
                       </tbody>
                     </table>
                   </div>
 
-                  <div className="mt-4" style={{ width: '100%', height: 180 }}>
-                    <ResponsiveContainer>
-                      <BarChart data={companyCounts.map((c: any) => ({ name: c.company, count: c.selectedMusic }))} margin={{ top: 10, right: 20, left: 0, bottom: 60 }}>
+                  <div className="h-[220px] w-full sm:h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={artistCounts.map((a: any) => ({ name: a.name, count: a.count }))}
+                        margin={{ top: 10, right: 16, left: 12, bottom: 56 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} height={60} />
-                        <YAxis />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={56} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
                         <Tooltip />
-                        <Bar dataKey="count" fill="#ffc658">
-                          {companyCounts.map((_: any, i: number) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                        <Bar dataKey="count" fill="#8884d8">
+                          {artistCounts.map((_: any, i: number) => (
+                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                          ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -528,43 +525,112 @@ const ArtistPerformance: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Company detail panel */}
           <Card>
-            <CardHeader>
+            <CardHeader className="space-y-1">
+              <CardTitle>Top Companies</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {companyCounts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No company activity</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="max-h-64 overflow-x-auto overflow-y-auto rounded-xl border border-border/40 bg-card/30">
+                    <table className="min-w-full table-fixed text-sm">
+                      <thead>
+                        <tr className="text-left">
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Company</th>
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">LogSheets</th>
+                          <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selected Songs</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {companyCounts
+                          .filter((c: any) => !search.trim() || c.company.toLowerCase().includes(search.toLowerCase()))
+                          .sort((a: any, b: any) => b.selectedMusic - a.selectedMusic)
+                          .map((c: any) => (
+                            <tr
+                              key={c.company}
+                              className={`cursor-pointer transition-colors hover:bg-muted/40 ${selectedCompany === c.company ? 'bg-muted/30' : ''}`}
+                              onClick={() => setSelectedCompany(c.company)}
+                            >
+                              <td className="px-3 py-2 text-sm font-medium text-foreground">{c.company}</td>
+                              <td className="px-3 py-2 text-sm font-semibold text-foreground">{c.sheets}</td>
+                              <td className="px-3 py-2 text-sm font-semibold text-foreground">{c.selectedMusic}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="h-[220px] w-full sm:h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={companyCounts.map((c: any) => ({ name: c.company, count: c.selectedMusic }))}
+                        margin={{ top: 10, right: 16, left: 12, bottom: 56 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={56} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#ffc658">
+                          {companyCounts.map((_: any, i: number) => (
+                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="space-y-1">
               <CardTitle>Company Details</CardTitle>
             </CardHeader>
             <CardContent>
               {!selectedCompany ? (
                 <div className="text-sm text-muted-foreground">Click a company to view their selections of your music</div>
               ) : (
-                <div>
-                  <h4 className="font-semibold">{selectedCompany}</h4>
-                  <div className="text-sm text-muted-foreground mb-2">Summary</div>
-                  <div className="grid grid-cols-1 gap-2">
-                    <div>Total LogSheets: <span className="font-semibold">{companyCounts.find((c: any) => c.company === selectedCompany)?.sheets || 0}</span></div>
-                    <div>Total Songs Selected: <span className="font-semibold">{companySelectedCountMap[selectedCompany] || 0}</span></div>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-semibold">{selectedCompany}</h4>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Summary</p>
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div>
+                        Total LogSheets: <span className="font-semibold">{companyCounts.find((c: any) => c.company === selectedCompany)?.sheets || 0}</span>
+                      </div>
+                      <div>
+                        Total Songs Selected: <span className="font-semibold">{companySelectedCountMap[selectedCompany] || 0}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-4">
+                  <div className="space-y-3">
                     <h5 className="font-semibold">Per-Song Counts</h5>
-                    <div className="overflow-auto max-h-40 mt-2">
-                      <table className="w-full text-sm">
+                    <div className="max-h-40 overflow-x-auto overflow-y-auto rounded-lg border border-border/30 bg-card/20">
+                      <table className="min-w-full table-fixed text-sm">
                         <thead>
-                          <tr className="text-left"><th className="px-2 py-1">Song</th><th className="px-2 py-1">Count</th></tr>
+                          <tr className="text-left">
+                            <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Song</th>
+                            <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Count</th>
+                          </tr>
                         </thead>
-                        <tbody>
-                          {Object.entries(songCounts
-                            .reduce((acc: Record<string, any>, s: any) => {
-                              acc[s.title] = { title: s.title, count: (s.companies?.[selectedCompany] || 0) };
+                        <tbody className="divide-y divide-border/60">
+                          {Object.entries(
+                            songCounts.reduce((acc: Record<string, any>, s: any) => {
+                              acc[s.title] = { title: s.title, count: s.companies?.[selectedCompany] || 0 };
                               return acc;
-                            }, {})
-                          ).map(([k, v]: any) => v)
+                            }, {}),
+                          )
+                            .map(([_, v]: any) => v)
                             .filter((r: any) => r.count > 0)
                             .sort((a: any, b: any) => b.count - a.count)
                             .map((r: any) => (
-                              <tr key={r.title} className="border-t">
-                                <td className="px-2 py-1">{r.title}</td>
-                                <td className="px-2 py-1 font-semibold">{r.count}</td>
+                              <tr key={r.title} className="transition-colors hover:bg-muted/40">
+                                <td className="px-3 py-2 text-sm font-medium text-foreground">{r.title}</td>
+                                <td className="px-3 py-2 text-sm font-semibold text-foreground">{r.count}</td>
                               </tr>
                             ))}
                         </tbody>
@@ -572,18 +638,28 @@ const ArtistPerformance: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-4">
+                  <div className="space-y-3">
                     <h5 className="font-semibold">LogSheets</h5>
-                    <div className="overflow-auto max-h-48 mt-2">
-                      <table className="w-full text-sm">
+                    <div className="max-h-48 overflow-x-auto overflow-y-auto rounded-lg border border-border/30 bg-card/20">
+                      <table className="min-w-full table-fixed text-sm">
                         <thead>
-                          <tr className="text-left"><th className="px-2 py-1">Date</th><th className="px-2 py-1">Selected Songs</th></tr>
+                          <tr className="text-left">
+                            <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date</th>
+                            <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selected Songs</th>
+                          </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-border/60">
                           {(companySheetsMap[selectedCompany] || []).map((s: any) => (
-                            <tr key={s.id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => { setSelectedLogSheet(s); setLogSheetDialogOpen(true); }}>
-                              <td className="px-2 py-1">{new Date(s.createdDate).toLocaleDateString()}</td>
-                              <td className="px-2 py-1">{(s.selectedMusic || []).map((m: any) => m.title).join(', ')}</td>
+                            <tr
+                              key={s.id}
+                              className="cursor-pointer transition-colors hover:bg-muted/40"
+                              onClick={() => {
+                                setSelectedLogSheet(s);
+                                setLogSheetDialogOpen(true);
+                              }}
+                            >
+                              <td className="px-3 py-2 text-sm font-medium text-foreground">{new Date(s.createdDate).toLocaleDateString()}</td>
+                              <td className="px-3 py-2 text-sm text-foreground">{(s.selectedMusic || []).map((m: any) => m.title).join(', ')}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -591,42 +667,49 @@ const ArtistPerformance: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* LogSheet Details Dialog */}
                   <Dialog open={logSheetDialogOpen} onOpenChange={setLogSheetDialogOpen}>
-                    <DialogContent className="max-w-lg">
+                    <DialogContent className="max-w-lg space-y-4">
                       <DialogHeader>
                         <DialogTitle>LogSheet Details</DialogTitle>
                       </DialogHeader>
                       {selectedLogSheet ? (
-                        <div className="space-y-4">
+                        <div className="space-y-4 text-sm">
                           <div>
-                            <div className="text-sm text-muted-foreground">Company</div>
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground">Company</div>
                             <div className="font-semibold">{selectedLogSheet.company?.companyName || 'Unknown Company'}</div>
                           </div>
                           <div>
-                            <div className="text-sm text-muted-foreground">Date</div>
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground">Date</div>
                             <div className="font-semibold">{new Date(selectedLogSheet.createdDate).toLocaleString()}</div>
                           </div>
                           <div>
-                            <div className="text-sm text-muted-foreground">Selected Tracks</div>
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground">Selected Tracks</div>
                             <div className="space-y-2">
                               {(selectedLogSheet.selectedMusic || []).length === 0 ? (
                                 <div className="text-muted-foreground">No tracks selected.</div>
                               ) : (
                                 (selectedLogSheet.selectedMusic || []).map((track: any) => (
-                                  <div key={track.id} className="flex items-center gap-2 p-2 rounded border">
-                                    {track.fileType?.toLowerCase().includes('video') ? <Video className="h-4 w-4" /> : <FileMusic className="h-4 w-4" />}
-                                    <span className="font-semibold">{track.title}</span>
+                                  <div
+                                    key={track.id ?? track.title}
+                                    className="flex flex-wrap items-center gap-2 rounded border border-border/40 p-2"
+                                  >
+                                    {track.fileType?.toLowerCase().includes('video') ? (
+                                      <Video className="h-4 w-4 text-muted-foreground" />
+                                    ) : (
+                                      <FileMusic className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    <span className="text-sm font-semibold text-foreground">{track.title}</span>
                                     <span className="text-xs text-muted-foreground">{track.artist || 'Unknown Artist'}</span>
                                     {track.fileUrl && (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-6 w-6 p-0"
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 shrink-0 rounded-full p-0 text-primary hover:bg-primary/10"
                                         onClick={() => {
                                           setCurrentTrack(track);
                                           setPlayerOpen(true);
                                         }}
+                                        aria-label={`Preview ${track.title}`}
                                       >
                                         <Play className="h-4 w-4" />
                                       </Button>
@@ -650,18 +733,18 @@ const ArtistPerformance: React.FC = () => {
 
         {/* Timeline */}
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-1">
             <CardTitle>Your Selections Over Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div style={{ width: '100%', height: 250 }}>
-              <ResponsiveContainer>
-                <LineChart data={globalTimeline} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+            <div className="h-[240px] w-full sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={globalTimeline} margin={{ top: 10, right: 16, left: 12, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Line type="monotone" dataKey="count" stroke="#00C49F" strokeWidth={2} name="Selections" dot={false} />
                 </LineChart>
               </ResponsiveContainer>

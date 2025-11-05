@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
-import { PanelLeft } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -217,8 +216,9 @@ const Sidebar = React.forwardRef<
 Sidebar.displayName = "Sidebar";
 
 const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button>>(
-  ({ className, onClick, ...props }, ref) => {
-    const { toggleSidebar } = useSidebar();
+  ({ className, onClick, children, ...props }, ref) => {
+    const { toggleSidebar, state, isMobile, openMobile } = useSidebar();
+    const isOpen = isMobile ? openMobile : state === "expanded";
 
     return (
       <Button
@@ -226,14 +226,49 @@ const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.C
         data-sidebar="trigger"
         variant="ghost"
         size="icon"
-        className={cn("h-7 w-7", className)}
+        className={cn(
+          "relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+          isOpen && "bg-accent/10 text-accent-foreground shadow-sm",
+          className,
+        )}
+        aria-label="Toggle sidebar navigation"
+        aria-expanded={isOpen}
         onClick={(event) => {
           onClick?.(event);
           toggleSidebar();
         }}
         {...props}
       >
-        <PanelLeft />
+        {children ?? (
+          <span className="relative flex items-center justify-center">
+            <span className="flex flex-col items-center justify-center gap-1.5">
+              <span
+                className={cn(
+                  "h-0.5 w-5 rounded-full bg-current transition-all duration-300",
+                  isOpen && "translate-y-[6px] rotate-45",
+                )}
+              />
+              <span
+                className={cn(
+                  "h-0.5 w-4 rounded-full bg-current transition-all duration-300",
+                  isOpen && "w-0 opacity-0",
+                )}
+              />
+              <span
+                className={cn(
+                  "h-0.5 w-5 rounded-full bg-current transition-all duration-300",
+                  isOpen && "-translate-y-[6px] -rotate-45",
+                )}
+              />
+            </span>
+            <span
+              className={cn(
+                "absolute -right-1 top-0 h-2 w-2 rounded-full bg-gradient-to-br from-primary to-primary/70 opacity-0 shadow-sm transition-opacity duration-300",
+                isOpen && "opacity-100",
+              )}
+            />
+          </span>
+        )}
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
     );

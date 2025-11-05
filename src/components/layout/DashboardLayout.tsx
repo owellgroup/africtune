@@ -33,8 +33,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) =>
         <div className="relative flex flex-1 flex-col">
           <Header title={title} bigLogo />
 
-          <main className="flex-1 overflow-auto bg-gradient-to-b from-background via-background/95 to-background">
-            <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 animate-fade-in">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gradient-to-b from-background via-background/95 to-background">
+            <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 animate-fade-in">
               {children}
             </div>
           </main>
