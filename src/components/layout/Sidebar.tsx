@@ -145,7 +145,7 @@ const navigationConfig: Record<string, NavigationSection[]> = {
 };
 
 const AppSidebar: React.FC = () => {
-  const { state } = useSidebar();
+  const { state, setOpenMobile, isMobile } = useSidebar();
   const { userRole } = useAuth();
   const location = useLocation();
   const collapsed = state === 'collapsed';
@@ -171,47 +171,52 @@ const AppSidebar: React.FC = () => {
         <SidebarTrigger className="hover-scale" />
       </div>
 
-      <SidebarContent className="px-2">
-        {navigation.map((section, index) => (
-          <SidebarGroup key={index} className="mb-4">
-            {!collapsed && (
-              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                {section.label}
-              </SidebarGroupLabel>
-            )}
-            
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item, itemIndex) => (
-                  <SidebarMenuItem key={itemIndex} className="mb-1">
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={`${getNavCls(item.url)} flex items-center rounded-lg p-3 transition-all duration-200 hover-scale`}
-                      >
-                        <item.icon className={`h-5 w-5 ${collapsed ? 'mx-auto' : 'mr-3'} flex-shrink-0`} />
-                        {!collapsed && (
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-sm font-medium">{item.title}</span>
-                            {item.badge && (
-                              <Badge 
-                                variant={item.badge === 'pending' ? 'destructive' : 'secondary'} 
-                                className="text-xs animate-pulse-glow"
-                              >
-                                {item.badge === 'pending' ? '!' : item.badge}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-      </SidebarContent>
+        <SidebarContent className="px-2">
+          {navigation.map((section, index) => (
+            <SidebarGroup key={index} className="mb-4">
+              {!collapsed && (
+                <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  {section.label}
+                </SidebarGroupLabel>
+              )}
+
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {section.items.map((item, itemIndex) => (
+                    <SidebarMenuItem key={itemIndex} className="mb-1">
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className={`${getNavCls(item.url)} flex items-center rounded-lg p-3 transition-all duration-200 hover-scale`}
+                          onClick={() => {
+                            if (isMobile) {
+                              setOpenMobile(false);
+                            }
+                          }}
+                        >
+                          <item.icon className={`h-5 w-5 ${collapsed ? 'mx-auto' : 'mr-3'} flex-shrink-0`} />
+                          {!collapsed && (
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-sm font-medium">{item.title}</span>
+                              {item.badge && (
+                                <Badge
+                                  variant={item.badge === 'pending' ? 'destructive' : 'secondary'}
+                                  className="text-xs animate-pulse-glow"
+                                >
+                                  {item.badge === 'pending' ? '!' : item.badge}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+        </SidebarContent>
     </Sidebar>
   );
 };

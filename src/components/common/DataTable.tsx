@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface Column<T> {
   key: keyof T | string;
@@ -91,13 +92,14 @@ function DataTable<T extends Record<string, any>>({
   emptyMessage = 'No data available',
   className = '',
 }: DataTableProps<T>) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: 'asc' | 'desc';
-  } | null>(null);
-  const [playingItem, setPlayingItem] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [sortConfig, setSortConfig] = useState<{
+      key: string;
+      direction: 'asc' | 'desc';
+    } | null>(null);
+    const [playingItem, setPlayingItem] = useState<string | null>(null);
+    const isMobile = useIsMobile();
 
   // Filter and search data
   const filteredData = useMemo(() => {
@@ -131,16 +133,35 @@ function DataTable<T extends Record<string, any>>({
     });
   }, [filteredData, sortConfig]);
 
-  // Paginate data
-  const paginatedData = useMemo(() => {
-    if (!pagination) return sortedData;
-    
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    return sortedData.slice(start, end);
-  }, [sortedData, currentPage, pageSize, pagination]);
+    // Paginate data
+    const computedPageSize = useMemo(() => {
+      const safePageSize = Math.max(1, pageSize || 1);
+      return isMobile ? Math.min(safePageSize, 6) : safePageSize;
+    }, [isMobile, pageSize]);
 
-  const totalPages = Math.ceil(sortedData.length / pageSize);
+    const paginatedData = useMemo(() => {
+      if (!pagination) return sortedData;
+
+      const start = (currentPage - 1) * computedPageSize;
+      const end = start + computedPageSize;
+      return sortedData.slice(start, end);
+    }, [sortedData, currentPage, computedPageSize, pagination]);
+
+    const totalPages = pagination ? Math.max(1, Math.ceil(sortedData.length / computedPageSize)) : 1;
+
+    useEffect(() => {
+      if (!pagination) {
+        if (currentPage !== 1) {
+          setCurrentPage(1);
+        }
+        return;
+      }
+
+      const nextTotalPages = Math.max(1, Math.ceil(sortedData.length / computedPageSize));
+      if (currentPage > nextTotalPages) {
+        setCurrentPage(nextTotalPages);
+      }
+    }, [pagination, sortedData.length, computedPageSize, currentPage]);
 
   const handleSort = (key: string) => {
     setSortConfig((current) => {
@@ -271,8 +292,8 @@ function DataTable<T extends Record<string, any>>({
 
   const hasToolbar = Boolean(title || description || searchable || filterable || exportable);
 
-  return (
-    <Card className={cn('animate-fade-in', className)}>
+    return (
+      <Card className={cn('animate-fade-in rounded-2xl border border-border/70 bg-card/95 shadow-sm', className)}>
       <CardContent className="p-0">
         {/* Header */}
         {hasToolbar && (
@@ -315,7 +336,7 @@ function DataTable<T extends Record<string, any>>({
         )}
 
           {/* Table - desktop */}
-          <div className="hidden sm:block">
+            <div className="hidden sm:block">
             <div className="overflow-x-auto">
               <Table className="data-table min-w-full">
                 <TableHeader>
@@ -425,71 +446,93 @@ function DataTable<T extends Record<string, any>>({
           </div>
 
           {/* Mobile card view */}
-          <div className="sm:hidden">
-            {paginatedData.length > 0 ? (
-              <div className="space-y-4">
-                {paginatedData.map((item, index) => (
-                  <div
-                    key={index}
-                    className="space-y-3 rounded-xl border border-border/70 bg-card/95 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-md"
-                  >
-                    {columns.map((column, columnIndex) => (
-                      <div key={columnIndex} className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          {column.header}
-                        </span>
-                        <div className="break-words text-sm text-foreground">
-                          {renderCellValue(column, item)}
-                        </div>
-                      </div>
-                    ))}
+            <div className="sm:hidden">
+              {paginatedData.length > 0 ? (
+                <div className="space-y-4">
+                  {paginatedData.map((item, index) => {
+                    const primaryColumn = columns[0];
+                    const secondaryColumns = columns.slice(1);
 
-                    {actions.length > 0 && (
-                      <div className="flex flex-wrap gap-2 border-t border-border/50 pt-2">
-                        {actions.map((action, actionIndex) => {
-                          const shouldShow = action.show ? action.show(item) : true;
-                          const isDisabled = action.disabled ? action.disabled(item) : false;
-                          if (!shouldShow) return null;
+                    return (
+                      <div
+                        key={index}
+                        className="space-y-4 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
+                      >
+                        {primaryColumn && (
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground/80">
+                                {primaryColumn.header}
+                              </span>
+                              <div className="text-base font-semibold leading-snug text-foreground">
+                                {renderCellValue(primaryColumn, item)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                          return (
-                            <Button
-                              key={actionIndex}
-                              variant={
-                                action.variant === 'destructive'
-                                  ? 'destructive'
-                                  : action.variant === 'success'
-                                  ? 'secondary'
-                                  : 'outline'
-                              }
-                              size="sm"
-                              className="flex-1 min-w-[48%]"
-                              onClick={() => !isDisabled && action.onClick(item)}
-                              disabled={isDisabled}
-                            >
-                              {action.icon && <action.icon className="mr-2 h-4 w-4" />}
-                              {action.label}
-                            </Button>
-                          );
-                        })}
+                        {secondaryColumns.length > 0 && (
+                          <div className="grid gap-3">
+                            {secondaryColumns.map((column, columnIndex) => (
+                              <div key={columnIndex} className="flex flex-col gap-1">
+                                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground/90">
+                                  {column.header}
+                                </span>
+                                <div className="break-words text-sm leading-relaxed text-foreground">
+                                  {renderCellValue(column, item)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {actions.length > 0 && (
+                          <div className="flex flex-wrap gap-2 border-t border-border/50 pt-2">
+                            {actions.map((action, actionIndex) => {
+                              const shouldShow = action.show ? action.show(item) : true;
+                              const isDisabled = action.disabled ? action.disabled(item) : false;
+                              if (!shouldShow) return null;
+
+                              return (
+                                <Button
+                                  key={actionIndex}
+                                  variant={
+                                    action.variant === 'destructive'
+                                      ? 'destructive'
+                                      : action.variant === 'success'
+                                      ? 'secondary'
+                                      : 'outline'
+                                  }
+                                  size="sm"
+                                  className="flex-1 min-w-[48%]"
+                                  onClick={() => !isDisabled && action.onClick(item)}
+                                  disabled={isDisabled}
+                                >
+                                  {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+                                  {action.label}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </div>
+              )}
+            </div>
 
           {/* Pagination */}
           {showPagination && pagination && totalPages > 1 && (
             <div className="border-t border-border/80 p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {Math.min((currentPage - 1) * pageSize + 1, sortedData.length)} to{' '}
-                  {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
+                    Showing {Math.min((currentPage - 1) * computedPageSize + 1, sortedData.length)} to{' '}
+                    {Math.min(currentPage * computedPageSize, sortedData.length)} of {sortedData.length} results
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">

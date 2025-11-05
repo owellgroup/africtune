@@ -342,10 +342,10 @@ const ArtistMyMusic: React.FC = () => {
 
   return (
     <DashboardLayout title="My Music">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Music</h1>
-          <p className="text-muted-foreground">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">My Music</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed sm:text-base">
             Manage your uploaded music tracks
           </p>
         </div>
