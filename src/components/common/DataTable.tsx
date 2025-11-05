@@ -33,8 +33,8 @@ import {
   XCircle,
   Clock,
 } from 'lucide-react';
-import { downloadFile } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export interface Column<T> {
   key: keyof T | string;
@@ -269,41 +269,43 @@ function DataTable<T extends Record<string, any>>({
     );
   }
 
+  const hasToolbar = Boolean(title || description || searchable || filterable || exportable);
+
   return (
-    <Card className={`${className} animate-fade-in`}>
+    <Card className={cn('animate-fade-in', className)}>
       <CardContent className="p-0">
         {/* Header */}
-        {(title || searchable || filterable || exportable) && (
-          <div className="p-6 border-b border-border">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-              <div>
-                {title && <h3 className="text-lg font-semibold">{title}</h3>}
+        {hasToolbar && (
+          <div className="border-b border-border/80 p-4 sm:p-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                {title && <h3 className="text-base font-semibold text-foreground sm:text-lg">{title}</h3>}
                 {description && <p className="text-sm text-muted-foreground">{description}</p>}
               </div>
-              
-              <div className="flex items-center space-x-2">
+
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                 {searchable && (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <div className="relative w-full sm:w-auto">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder={searchPlaceholder}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 w-[200px] transition-all duration-200 focus:w-[250px]"
+                      className="w-full rounded-lg border-border/70 bg-card/80 pl-9 pr-3 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary sm:w-56 md:w-64"
                     />
                   </div>
                 )}
-                
+
                 {filterable && (
-                  <Button variant="outline" size="sm" className="hover-scale">
-                    <Filter className="w-4 h-4 mr-2" />
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto hover-scale">
+                    <Filter className="mr-2 h-4 w-4" />
                     Filter
                   </Button>
                 )}
-                
+
                 {exportable && (
-                  <Button variant="outline" size="sm" className="hover-scale">
-                    <Download className="w-4 h-4 mr-2" />
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto hover-scale">
+                    <Download className="mr-2 h-4 w-4" />
                     Export
                   </Button>
                 )}
@@ -312,220 +314,230 @@ function DataTable<T extends Record<string, any>>({
           </div>
         )}
 
-        {/* Table - desktop */}
-        <div className="hidden sm:block">
-          <div className="overflow-x-auto">
-            <Table className="data-table">
-              <TableHeader>
-                <TableRow>
-                  {columns.map((column, i) => (
-                    <TableHead
-                      key={i}
-                      className={`${column.width || ''} ${column.className || ''} ${
-                        column.sortable ? 'cursor-pointer hover:bg-muted/50' : ''
-                      }`}
-                      onClick={() => column.sortable && handleSort(column.key as string)}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>{column.header}</span>
-                        {column.sortable && sortConfig?.key === column.key && (
-                          <span className="text-xs">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                  ))}
-                  {actions.length > 0 && (
-                    <TableHead className="text-right">Actions</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedData.length > 0 ? (
-                  paginatedData.map((item, index) => (
-                    <TableRow 
-                      key={index} 
-                      className="transition-colors duration-200 hover:bg-muted/30"
-                    >
-                      {columns.map((column, i) => (
-                        <TableCell key={i} className={column.className}>
-                          {renderCellValue(column, item)}
-                        </TableCell>
-                      ))}
-                      {actions.length > 0 && (
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover-scale"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="animate-scale-in">
-                              {actions.map((action, actionIndex) => {
-                                const shouldShow = action.show ? action.show(item) : true;
-                                const isDisabled = action.disabled ? action.disabled(item) : false;
-                                
-                                if (!shouldShow) return null;
-                                
-                                return (
-                                  <React.Fragment key={actionIndex}>
-                                    <DropdownMenuItem
-                                      onClick={() => !isDisabled && action.onClick(item)}
-                                      disabled={isDisabled}
-                                      className={`cursor-pointer ${
-                                        action.variant === 'destructive'
-                                          ? 'text-destructive focus:text-destructive'
-                                          : action.variant === 'success'
-                                          ? 'text-namsa-success focus:text-namsa-success'
-                                          : action.variant === 'warning'
-                                          ? 'text-namsa-warning focus:text-namsa-warning'
-                                          : ''
-                                      }`}
-                                    >
-                                      {action.icon && (
-                                        <action.icon className="mr-2 h-4 w-4" />
-                                      )}
-                                      {action.label}
-                                    </DropdownMenuItem>
-                                    {actionIndex < actions.length - 1 && (
-                                      <DropdownMenuSeparator />
-                                    )}
-                                  </React.Fragment>
-                                );
-                              })}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                ) : (
+          {/* Table - desktop */}
+          <div className="hidden sm:block">
+            <div className="overflow-x-auto">
+              <Table className="data-table min-w-full">
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
-                      className="text-center py-12 text-muted-foreground"
-                    >
-                      {emptyMessage}
-                    </TableCell>
+                    {columns.map((column, i) => (
+                      <TableHead
+                        key={i}
+                        className={cn(
+                          'whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-muted-foreground/90',
+                          column.width,
+                          column.className,
+                          column.sortable && 'cursor-pointer select-none hover:bg-muted/60'
+                        )}
+                        onClick={() => column.sortable && handleSort(column.key as string)}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>{column.header}</span>
+                          {column.sortable && sortConfig?.key === column.key && (
+                            <span className="text-xs">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </div>
+                      </TableHead>
+                    ))}
+                    {actions.length > 0 && (
+                      <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground/90">
+                        Actions
+                      </TableHead>
+                    )}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        {/* Mobile card view */}
-        <div className="sm:hidden">
-          {paginatedData.length > 0 ? (
-            <div className="space-y-4">
-              {paginatedData.map((item, index) => (
-                <div
-                  key={index}
-                  className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-3"
-                >
-                  {columns.map((column, columnIndex) => (
-                    <div key={columnIndex} className="flex flex-col gap-1">
-                      <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">
-                        {column.header}
-                      </span>
-                      <div className="text-sm text-foreground break-words">
-                        {renderCellValue(column, item)}
-                      </div>
-                    </div>
-                  ))}
-
-                  {actions.length > 0 && (
-                    <div className="pt-2 border-t border-border/50 flex flex-wrap gap-2">
-                      {actions.map((action, actionIndex) => {
-                        const shouldShow = action.show ? action.show(item) : true;
-                        const isDisabled = action.disabled ? action.disabled(item) : false;
-                        if (!shouldShow) return null;
-
-                        return (
-                          <Button
-                            key={actionIndex}
-                            variant={action.variant === 'destructive' ? 'destructive' : action.variant === 'success' ? 'secondary' : 'outline'}
-                            size="sm"
-                            className="flex-1 min-w-[45%]"
-                            onClick={() => !isDisabled && action.onClick(item)}
-                            disabled={isDisabled}
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.length > 0 ? (
+                    paginatedData.map((item, index) => (
+                      <TableRow
+                        key={index}
+                        className="transition-colors duration-200 hover:bg-muted/30"
+                      >
+                        {columns.map((column, i) => (
+                          <TableCell
+                            key={i}
+                            className={cn('align-top break-words text-sm text-foreground', column.className)}
                           >
-                            {action.icon && <action.icon className="mr-2 h-4 w-4" />}
-                            {action.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
+                            {renderCellValue(column, item)}
+                          </TableCell>
+                        ))}
+                        {actions.length > 0 && (
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 hover-scale"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="animate-scale-in">
+                                {actions.map((action, actionIndex) => {
+                                  const shouldShow = action.show ? action.show(item) : true;
+                                  const isDisabled = action.disabled ? action.disabled(item) : false;
+
+                                  if (!shouldShow) return null;
+
+                                  return (
+                                    <React.Fragment key={actionIndex}>
+                                      <DropdownMenuItem
+                                        onClick={() => !isDisabled && action.onClick(item)}
+                                        disabled={isDisabled}
+                                        className={cn(
+                                          'cursor-pointer',
+                                          action.variant === 'destructive'
+                                            ? 'text-destructive focus:text-destructive'
+                                            : action.variant === 'success'
+                                            ? 'text-namsa-success focus:text-namsa-success'
+                                            : action.variant === 'warning'
+                                            ? 'text-namsa-warning focus:text-namsa-warning'
+                                            : undefined
+                                        )}
+                                      >
+                                        {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+                                        {action.label}
+                                      </DropdownMenuItem>
+                                      {actionIndex < actions.length - 1 && <DropdownMenuSeparator />}
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
+                        className="py-12 text-center text-muted-foreground"
+                      >
+                        {emptyMessage}
+                      </TableCell>
+                    </TableRow>
                   )}
-                </div>
-              ))}
+                </TableBody>
+              </Table>
             </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
-              {emptyMessage}
+          </div>
+
+          {/* Mobile card view */}
+          <div className="sm:hidden">
+            {paginatedData.length > 0 ? (
+              <div className="space-y-4">
+                {paginatedData.map((item, index) => (
+                  <div
+                    key={index}
+                    className="space-y-3 rounded-xl border border-border/70 bg-card/95 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-md"
+                  >
+                    {columns.map((column, columnIndex) => (
+                      <div key={columnIndex} className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {column.header}
+                        </span>
+                        <div className="break-words text-sm text-foreground">
+                          {renderCellValue(column, item)}
+                        </div>
+                      </div>
+                    ))}
+
+                    {actions.length > 0 && (
+                      <div className="flex flex-wrap gap-2 border-t border-border/50 pt-2">
+                        {actions.map((action, actionIndex) => {
+                          const shouldShow = action.show ? action.show(item) : true;
+                          const isDisabled = action.disabled ? action.disabled(item) : false;
+                          if (!shouldShow) return null;
+
+                          return (
+                            <Button
+                              key={actionIndex}
+                              variant={
+                                action.variant === 'destructive'
+                                  ? 'destructive'
+                                  : action.variant === 'success'
+                                  ? 'secondary'
+                                  : 'outline'
+                              }
+                              size="sm"
+                              className="flex-1 min-w-[48%]"
+                              onClick={() => !isDisabled && action.onClick(item)}
+                              disabled={isDisabled}
+                            >
+                              {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+                              {action.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {showPagination && pagination && totalPages > 1 && (
+            <div className="border-t border-border/80 p-4 sm:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {Math.min((currentPage - 1) * pageSize + 1, sortedData.length)} to{' '}
+                  {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="hover-scale"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <div className="flex flex-wrap items-center gap-1">
+                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                      const page = currentPage - 2 + i;
+                      if (page < 1 || page > totalPages) return null;
+
+                      return (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className={cn(
+                            'h-8 w-8 p-0 hover-scale',
+                            page === currentPage && 'bg-gradient-namsa text-primary-foreground'
+                          )}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="hover-scale"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-
-        {/* Pagination */}
-        {showPagination && pagination && totalPages > 1 && (
-          <div className="p-6 border-t border-border">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing {Math.min((currentPage - 1) * pageSize + 1, sortedData.length)} to{' '}
-                {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="hover-scale"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                
-                <div className="flex items-center space-x-1">
-                  {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                    const page = currentPage - 2 + i;
-                    if (page < 1 || page > totalPages) return null;
-                    
-                    return (
-                      <Button
-                        key={page}
-                        variant={page === currentPage ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 p-0 hover-scale ${
-                          page === currentPage ? 'bg-gradient-namsa' : ''
-                        }`}
-                      >
-                        {page}
-                      </Button>
-                    );
-                  })}
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="hover-scale"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

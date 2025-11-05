@@ -354,14 +354,14 @@ const ArtistMyMusic: React.FC = () => {
           <div className="h-32 bg-muted rounded-lg animate-pulse"></div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2">
-              <TabsTrigger value="approved" className="whitespace-normal text-center py-2">
+            <TabsList className="flex w-full flex-col gap-2 rounded-xl bg-muted/70 p-1.5 sm:flex-row sm:gap-3">
+              <TabsTrigger value="approved" className="w-full whitespace-normal rounded-lg px-4 py-2 text-center text-sm font-medium sm:text-base">
                 Approved Tracks ({approvedTracks.length})
               </TabsTrigger>
-              <TabsTrigger value="pending" className="whitespace-normal text-center py-2">
+              <TabsTrigger value="pending" className="w-full whitespace-normal rounded-lg px-4 py-2 text-center text-sm font-medium sm:text-base">
                 Pending Tracks ({pendingTracks.length})
               </TabsTrigger>
-              <TabsTrigger value="rejected" className="whitespace-normal text-center py-2">
+              <TabsTrigger value="rejected" className="w-full whitespace-normal rounded-lg px-4 py-2 text-center text-sm font-medium sm:text-base">
                 Rejected Tracks ({rejectedTracks.length})
               </TabsTrigger>
             </TabsList>

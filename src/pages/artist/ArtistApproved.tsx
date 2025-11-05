@@ -38,9 +38,17 @@ const ArtistApproved: React.FC = () => {
   return (
     <DashboardLayout title="Approved Tracks">
       {loading ? (
-        <div className="h-32 bg-muted rounded-lg animate-pulse"></div>
+        <div className="h-32 rounded-xl bg-muted animate-pulse"></div>
       ) : (
-        <DataTable data={rows} columns={cols} searchable emptyMessage="No approved tracks" />
+        <DataTable
+          data={rows}
+          columns={cols}
+          searchable
+          emptyMessage="No approved tracks"
+          title="Approved Catalogue"
+          description="Tracks that have passed review and are ready for licensing"
+          pageSize={8}
+        />
       )}
     </DashboardLayout>
   );
