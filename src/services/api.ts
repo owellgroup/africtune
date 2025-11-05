@@ -146,7 +146,16 @@ export const artistAPI = {
     delete payload.genderId;
     delete payload.bankNameId;
 
-    const response = await api.post('/api/artist/profile', payload);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      throw new Error('Not authenticated: please sign in again to complete your profile.');
+    }
+    const response = await api.post('/api/artist/profile', payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
     return response.data;
   },
 
@@ -370,9 +379,12 @@ export const artistAPI = {
     delete payload.bankNameId;
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      throw new Error('Not authenticated: please sign in again to update your profile.');
+    }
     const response = await api.put('/api/artist/profile', payload, {
       headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
