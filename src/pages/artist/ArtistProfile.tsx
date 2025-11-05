@@ -39,6 +39,46 @@ const ArtistProfile: React.FC = () => {
     email: '',
     phoneNumber: '',
   });
+  const populateFormFromProfile = (profileData: MemberDetails) => {
+    setForm({
+      firstName: profileData.firstName || '',
+      surname: profileData.surname || '',
+      email: profileData.email || '',
+      phoneNumber: profileData.phoneNumber || '',
+      idNumber: profileData.idNumber || undefined,
+      pseudonym: profileData.pseudonym || '',
+      groupNameORStageName: profileData.groupNameORStageName || '',
+      noOFDependents: profileData.noOFDependents || undefined,
+      typeOfWork: profileData.typeOfWork || '',
+      line1: profileData.line1 || '',
+      line2: profileData.line2 || '',
+      city: profileData.city || '',
+      region: profileData.region || '',
+      poBox: profileData.poBox || '',
+      postalCode: profileData.postalCode || '',
+      country: profileData.country || '',
+      birthDate: profileData.birthDate || '',
+      placeOfBirth: profileData.placeOfBirth || '',
+      idOrPassportNumber: profileData.idOrPassportNumber || '',
+      nationality: profileData.nationality || '',
+      occupation: profileData.occupation || '',
+      nameOfEmployer: profileData.nameOfEmployer || '',
+      addressOfEmployer: profileData.addressOfEmployer || '',
+      nameOfTheBand: profileData.nameOfTheBand || '',
+      dateFounded: profileData.dateFounded || '',
+      numberOfBand: profileData.numberOfBand || undefined,
+      accountHolderName: profileData.accountHolderName || '',
+      bankAccountNumber: profileData.bankAccountNumber || '',
+      bankAccountType: profileData.bankAccountType || '',
+      bankBranchName: profileData.bankBranchName || '',
+      bankBranchNumber: profileData.bankBranchNumber || '',
+      bankNameId: profileData.bankName?.id || undefined,
+      titleId: (profileData as any).title?.id || (profileData as any).tittle?.id || undefined,
+      maritalStatusId: profileData.maritalStatus?.id || undefined,
+      memberCategoryId: profileData.memberCategory?.id || undefined,
+      genderId: profileData.gender?.id || undefined,
+    });
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -112,44 +152,7 @@ const ArtistProfile: React.FC = () => {
           setDocuments(documentsData);
           
           // Populate form with existing data
-          setForm({
-            firstName: profileData.firstName || '',
-            surname: profileData.surname || '',
-            email: profileData.email || '',
-            phoneNumber: profileData.phoneNumber || '',
-            idNumber: profileData.idNumber || undefined,
-            pseudonym: profileData.pseudonym || '',
-            groupNameORStageName: profileData.groupNameORStageName || '',
-            noOFDependents: profileData.noOFDependents || undefined,
-            typeOfWork: profileData.typeOfWork || '',
-            line1: profileData.line1 || '',
-            line2: profileData.line2 || '',
-            city: profileData.city || '',
-            region: profileData.region || '',
-            poBox: profileData.poBox || '',
-            postalCode: profileData.postalCode || '',
-            country: profileData.country || '',
-            birthDate: profileData.birthDate || '',
-            placeOfBirth: profileData.placeOfBirth || '',
-            idOrPassportNumber: profileData.idOrPassportNumber || '',
-            nationality: profileData.nationality || '',
-            occupation: profileData.occupation || '',
-            nameOfEmployer: profileData.nameOfEmployer || '',
-            addressOfEmployer: profileData.addressOfEmployer || '',
-            nameOfTheBand: profileData.nameOfTheBand || '',
-            dateFounded: profileData.dateFounded || '',
-            numberOfBand: profileData.numberOfBand || undefined,
-            accountHolderName: profileData.accountHolderName || '',
-            bankAccountNumber: profileData.bankAccountNumber || '',
-            bankAccountType: profileData.bankAccountType || '',
-            bankBranchName: profileData.bankBranchName || '',
-            bankBranchNumber: profileData.bankBranchNumber || '',
-            bankNameId: profileData.bankName?.id || undefined,
-            titleId: profileData.title?.id || undefined,
-            maritalStatusId: profileData.maritalStatus?.id || undefined,
-            memberCategoryId: profileData.memberCategory?.id || undefined,
-            genderId: profileData.gender?.id || undefined,
-          });
+          populateFormFromProfile(profileData);
         } catch (error) {
           // Profile doesn't exist yet, show create form
           setIsCreating(true);
@@ -308,85 +311,118 @@ const ArtistProfile: React.FC = () => {
     }
   };
 
-  const handleSubmitProfile = async () => {
-    if (saving) return; // Prevent double submission
+  const hasPendingDocumentUploads = () => Object.values(documentUploads).some((v) => v.file);
+
+  const buildUpdatePayload = () => {
+    const payload: any = { ...form };
+    if (preservedIpi) {
+      payload.IPI_number = preservedIpi;
+      payload.ipiNumber = preservedIpi;
+      payload.ipi_number = preservedIpi;
+    }
+    payload.notes = '';
+    return payload;
+  };
+
+  const normalizeProfileResponse = (profileData: MemberDetails, shouldPreserveIpi: boolean): MemberDetails => {
+    const normalized: any = { ...profileData };
+    if (
+      shouldPreserveIpi &&
+      preservedIpi &&
+      !((normalized as any).IPI_number || (normalized as any).ipi_number || (normalized as any).ipiNumber)
+    ) {
+      normalized.ipi_number = preservedIpi;
+    }
+    if ('notes' in normalized) {
+      normalized.notes = '';
+    }
+    return normalized as MemberDetails;
+  };
+
+  const completeProfileSave = async (
+    profileData: MemberDetails,
+    options: { toastTitle: string; toastDescription: string; preserveIpi?: boolean }
+  ) => {
+    const normalizedProfile = normalizeProfileResponse(profileData, options.preserveIpi ?? false);
+    setProfile(normalizedProfile);
+    populateFormFromProfile(normalizedProfile);
+    setIsCreating(false);
+    setIsEditing(false);
+    toast({ title: options.toastTitle, description: options.toastDescription });
+
+    if (hasPendingDocumentUploads()) {
+      await uploadAllSelectedDocuments();
+    }
+
+    setEditDialogOpen(false);
+    setCurrentPage(1);
 
     try {
-      setSaving(true);
-
-      // First validate required fields
-      if (!form.firstName?.trim() || !form.surname?.trim() || !form.email?.trim() || !form.phoneNumber?.trim()) {
-        toast({
-          title: "Required Fields Missing",
-          description: "Please fill in all required fields before submitting.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Create/update the profile first
-      if (isCreating) {
-        const created = await artistAPI.createProfile(form);
-        setProfile(created);
-        setIsCreating(false);
-        toast({
-          title: "Profile Created",
-          description: "Your profile has been submitted for review.",
-        });
-      } else {
-        // Ensure existing IPI number assigned by admin is preserved when updating profile
-        const payload: any = { ...form };
-
-        if (preservedIpi) {
-          payload.IPI_number = preservedIpi;
-          payload.ipiNumber = preservedIpi;
-          payload.ipi_number = preservedIpi;
-        }
-
-        // Artists should clear prior admin notes when editing their profile
-        payload.notes = '';
-
-        const updated = await artistAPI.updateProfile(payload);
-        const normalizedUpdated: any = { ...updated };
-
-        if (preservedIpi && !((normalizedUpdated as any).IPI_number || (normalizedUpdated as any).ipi_number || (normalizedUpdated as any).ipiNumber)) {
-          normalizedUpdated.ipi_number = preservedIpi;
-        }
-
-        if ('notes' in normalizedUpdated) {
-          normalizedUpdated.notes = '';
-        }
-
-        setProfile(normalizedUpdated as MemberDetails);
-        setIsEditing(false);
-        toast({
-          title: "Profile Updated",
-          description: "Your profile has been updated successfully!",
-        });
-      }
-      
-      // Then upload any selected files
-      const hasPendingDocs = Object.values(documentUploads).some((v) => v.file);
-      if (hasPendingDocs) {
-        await uploadAllSelectedDocuments();
-      }
-
-      // Close dialog and reset page
-      setEditDialogOpen(false);
-      setCurrentPage(1);
-      
-      // Refresh documents
       const updatedDocs = await artistAPI.getDocuments();
       setDocuments(updatedDocs);
+    } catch (docError) {
+      console.warn('Failed to refresh documents after profile save:', docError);
+    }
+  };
 
-    } catch (error: any) {
-      console.error('Profile submission error:', error);
-      toast({ 
-        title: 'Submission Failed', 
-        description: error?.response?.data?.message || 'Failed to submit profile. Please try again.',
-        variant: 'destructive'
+  const handleSubmitProfile = async () => {
+    if (saving) return;
+
+    if (!form.firstName?.trim() || !form.surname?.trim() || !form.email?.trim() || !form.phoneNumber?.trim()) {
+      toast({
+        title: "Required Fields Missing",
+        description: "Please fill in all required fields before submitting.",
+        variant: "destructive",
       });
+      return;
+    }
 
+    setSaving(true);
+
+    try {
+      if (isCreating) {
+        const createdProfile = await artistAPI.createProfile(form);
+        await completeProfileSave(createdProfile, {
+          toastTitle: "Profile Created",
+          toastDescription: "Your profile has been submitted for review.",
+          preserveIpi: false,
+        });
+      } else {
+        const updatedProfile = await artistAPI.updateProfile(buildUpdatePayload());
+        await completeProfileSave(updatedProfile, {
+          toastTitle: "Profile Updated",
+          toastDescription: "Your profile has been updated successfully!",
+          preserveIpi: true,
+        });
+      }
+    } catch (error: any) {
+      if (isCreating && error?.response?.status === 403) {
+        console.warn('Create profile returned 403. Attempting update fallback.', error);
+        try {
+          const fallbackProfile = await artistAPI.updateProfile(buildUpdatePayload());
+          await completeProfileSave(fallbackProfile, {
+            toastTitle: "Profile Updated",
+            toastDescription: "Existing profile detected. We updated it with your latest details.",
+            preserveIpi: true,
+          });
+          return;
+        } catch (fallbackError: any) {
+          console.error('Profile fallback update failed:', fallbackError);
+          toast({
+            title: 'Submission Failed',
+            description: fallbackError?.response?.data?.message || 'Failed to update existing profile. Please contact support.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
+      console.error('Profile submission error:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error?.response?.data?.message || error?.message || 'Failed to submit profile. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }

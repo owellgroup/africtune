@@ -146,8 +146,26 @@ export const artistAPI = {
     delete payload.genderId;
     delete payload.bankNameId;
 
-    const response = await api.post('/api/artist/profile', payload);
-    return response.data;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      try {
+        const response = await api.post('/api/artist/profile', payload, { headers });
+        return response.data;
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          const rawMessage = typeof error.response.data === 'string'
+            ? error.response.data
+            : error.response.data?.message;
+          if (rawMessage) {
+            error.message = rawMessage;
+          }
+        }
+        throw error;
+      }
   },
 
   // Documents update/delete for authenticated user
